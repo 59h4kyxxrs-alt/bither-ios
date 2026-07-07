@@ -22,16 +22,16 @@ jobs:
               require "json"
 
               data = JSON.parse(ENV.fetch("SCHEME_LIST"))
-              candidates = data.dig("workspace", "schemes") ||
+              scheme_or_target_names = data.dig("workspace", "schemes") ||
                 data.dig("project", "schemes") ||
                 data.dig("project", "targets")
 
-              if candidates.nil? || candidates.empty?
-                STDERR.puts("No shared Xcode scheme or fallback target found. Please ensure the project has at least one shared scheme configured.")
+              if scheme_or_target_names.nil? || scheme_or_target_names.empty?
+                STDERR.puts("No Xcode schemes or targets were found. Ensure the project has at least one scheme configured or a valid target.")
                 exit(1)
               end
 
-              puts candidates[0]
+              puts scheme_or_target_names[0]
             '
           )
           echo "$default" | cat >default
