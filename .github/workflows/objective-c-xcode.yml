@@ -17,7 +17,7 @@ jobs:
       - name: Set Default Scheme
         run: |
           scheme_list=$(xcodebuild -list -json | tr -d "\n")
-          default=$(echo "$scheme_list" | ruby -e "require 'json'; data = JSON.parse(STDIN.read); puts((data.dig('workspace', 'schemes') || data.dig('project', 'schemes') || data.dig('project', 'targets'))[0])")
+          default=$(echo "$scheme_list" | ruby -e "require 'json'; data = JSON.parse(STDIN.read); candidates = data.dig('workspace', 'schemes') || data.dig('project', 'schemes') || data.dig('project', 'targets'); abort('No shared Xcode scheme or target found') if candidates.nil? || candidates.empty?; puts candidates[0]")
           echo "$default" | cat >default
           echo Using default scheme: "$default"
       - name: Build
@@ -25,6 +25,23 @@ jobs:
           scheme: ${{ 'default' }}
         run: |
           if [ "$scheme" = default ]; then scheme=$(cat default); fi
-          if [ "`ls -A | grep -i \\.xcworkspace\$`" ]; then filetype_parameter="workspace" && file_to_build="`ls -A | grep -i \\.xcworkspace\$ | head -n 1`"; else filetype_parameter="project" && file_to_build="`ls -A | grep -i \\.xcodeproj\$ | head -n 1`"; fi
-          file_to_build=`echo "$file_to_build" | awk '{$1=$1;print}'`
-          xcodebuild clean build analyze -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO | xcpretty && exit ${PIPESTATUS[0]}
+          workspace_file=$(ls -A | grep -i '\.xcworkspace$' | head -n 1 || true)
+          project_file=$(ls -A | grep -i '\.xcodeproj$' | head -n 1 || true)
+          if [ -n "$workspace_file" ]; then
+            filetype_parameter="workspace"
+            file_to_build="$workspace_file"
+          elif [ -n "$project_file" ]; then
+            filetype_parameter="project"
+            file_to_build="$project_file"
+          else
+            echo "No Xcode workspace or project found" >&2
+            exit 1
+          fi
+          file_to_build=$(echo "$file_to_build" | awk '{$1=$1;print}')
+          build_command=(xcodebuild clean build analyze -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO)
+          if command -v xcpretty >/dev/null 2>&1; then
+            "${build_command[@]}" | xcpretty
+            exit ${PIPESTATUS[0]}
+          else
+            "${build_command[@]}"
+          fi
