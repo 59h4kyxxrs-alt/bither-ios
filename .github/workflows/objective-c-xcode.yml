@@ -38,7 +38,7 @@ jobs:
           echo Using default scheme: "$default"
       - name: Build
         env:
-          scheme: ${{ 'default' }}
+          scheme: default
         run: |
           if [ "$scheme" = default ]; then scheme=$(cat default); fi
           shopt -s nullglob nocaseglob
