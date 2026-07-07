@@ -27,7 +27,7 @@ jobs:
                 data.dig("project", "targets")
 
               if scheme_or_target_names.nil? || scheme_or_target_names.empty?
-                STDERR.puts("No Xcode schemes or targets were found. Ensure the project has at least one scheme configured or a valid target.")
+                STDERR.puts("Error: No Xcode schemes or targets were found. Ensure the project has at least one scheme configured or a valid target.")
                 exit(1)
               end
 
@@ -52,6 +52,12 @@ jobs:
             echo "No Xcode workspace or project found" >&2
             exit 1
           fi
+          simulator_name=$(xcrun simctl list devices available | awk -F ' \\(' '/^[[:space:]]+(iPhone|iPad)/ {gsub(/^[[:space:]]+/, "", $1); print $1; exit}')
+          if [ -z "$simulator_name" ]; then
+            echo "No available iOS Simulator device found" >&2
+            exit 1
+          fi
+          echo "Using simulator destination: $simulator_name"
           build_command=(
             xcodebuild
             clean
@@ -60,7 +66,7 @@ jobs:
             -scheme "$scheme"
             -"$filetype_parameter" "$file_to_build"
             -sdk iphonesimulator
-            -destination 'generic/platform=iOS Simulator'
+            -destination "platform=iOS Simulator,name=$simulator_name"
             CODE_SIGNING_ALLOWED=NO
             CODE_SIGNING_REQUIRED=NO
           )
