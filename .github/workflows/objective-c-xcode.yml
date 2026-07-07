@@ -27,7 +27,7 @@ jobs:
                 data.dig("project", "targets")
 
               if candidates.nil? || candidates.empty?
-                STDERR.puts("No shared Xcode scheme or fallback target found")
+                STDERR.puts("No shared Xcode scheme or fallback target found. Please ensure the project has at least one shared scheme configured.")
                 exit(1)
               end
 
@@ -37,10 +37,8 @@ jobs:
           echo "$default" | cat >default
           echo Using default scheme: "$default"
       - name: Build
-        env:
-          scheme: default
         run: |
-          if [ "$scheme" = default ]; then scheme=$(cat default); fi
+          scheme=$(cat default)
           shopt -s nullglob nocaseglob
           workspace_files=( *.xcworkspace )
           project_files=( *.xcodeproj )
