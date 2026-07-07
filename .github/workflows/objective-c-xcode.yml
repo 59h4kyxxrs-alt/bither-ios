@@ -17,7 +17,7 @@ jobs:
       - name: Set Default Scheme
         run: |
           scheme_list=$(xcodebuild -list -json | tr -d "\n")
-          default=$(echo "$scheme_list" | ruby -e "require 'json'; data = JSON.parse(STDIN.read); candidates = data.dig('workspace', 'schemes') || data.dig('project', 'schemes') || data.dig('project', 'targets'); abort('No shared Xcode scheme or target found') if candidates.nil? || candidates.empty?; puts candidates[0]")
+          default=$(echo "$scheme_list" | ruby -e "require 'json'; data = JSON.parse(STDIN.read); candidates = data.dig('workspace', 'schemes') || data.dig('project', 'schemes') || data.dig('project', 'targets'); abort('No shared Xcode scheme or fallback target found') if candidates.nil? || candidates.empty?; puts candidates[0]")
           echo "$default" | cat >default
           echo Using default scheme: "$default"
       - name: Build
@@ -25,14 +25,15 @@ jobs:
           scheme: ${{ 'default' }}
         run: |
           if [ "$scheme" = default ]; then scheme=$(cat default); fi
-          workspace_file=$(ls -A | grep -i '\.xcworkspace$' | head -n 1 || true)
-          project_file=$(ls -A | grep -i '\.xcodeproj$' | head -n 1 || true)
-          if [ -n "$workspace_file" ]; then
+          shopt -s nullglob nocaseglob
+          workspace_files=( *.xcworkspace )
+          project_files=( *.xcodeproj )
+          if [ ${#workspace_files[@]} -gt 0 ]; then
             filetype_parameter="workspace"
-            file_to_build="$workspace_file"
-          elif [ -n "$project_file" ]; then
+            file_to_build="${workspace_files[0]}"
+          elif [ ${#project_files[@]} -gt 0 ]; then
             filetype_parameter="project"
-            file_to_build="$project_file"
+            file_to_build="${project_files[0]}"
           else
             echo "No Xcode workspace or project found" >&2
             exit 1
